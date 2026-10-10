@@ -2355,8 +2355,8 @@ function deliverFormHtml(p){ return `    <div class="stack">
         ${hasPin(p)?'':`<label class="chk"><input type="checkbox" id="dvAutoPin" checked><span>📍 ปักหมุดจุดนี้ที่ตำแหน่งที่ยืนอยู่ตอนนี้ด้วย<br><small class="muted">จุดนี้ยังไม่มีหมุด ส่งครั้งเดียวได้หมุดไปเลย</small></span></label>`}
       </div>
       <div id="pVia" class="stack hide">
-        <label class="f">ฝากใครส่ง (ชื่อ/ตำแหน่ง)<span style="display:flex;gap:6px"><input id="dvVia" style="flex:1;min-width:0" placeholder="เช่น สท.สมชาย / ประธานชุมชน / ครูเวร"><button type="button" class="btn" id="dvViaSave" style="flex:none">💾 บันทึก</button></span></label>
-        ${viaNames().length?`<div class="viaPick">${viaNames().map(n=>`<button type="button" data-via="${esc(n)}">${esc(n)}</button>`).join('')}</div>`:''}
+        <label class="f">ฝากใครส่ง (ชื่อ/ตำแหน่ง)<span style="display:flex;gap:6px"><input id="dvVia" list="dvViaList" autocomplete="off" style="flex:1;min-width:0" placeholder="เช่น สท.สมชาย / ประธานชุมชน / ครูเวร"><button type="button" class="btn" id="dvViaSave" style="flex:none">💾 บันทึก</button></span></label>
+        <datalist id="dvViaList">${viaNames().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
         <div id="dvViaInfo"></div>
       </div>
       <div id="pProof" class="stack">
@@ -2861,7 +2861,7 @@ function exportCsv(){
 }
 
 /* ============ ตรวจหารุ่นใหม่ (สำหรับแอปบนหน้าจอโฮมที่ไม่มีปุ่มรีเฟรช) ============ */
-const BUILD_ID='20261010175557';
+const BUILD_ID='20261010175825';
 async function checkUpdate(){
   if(location.protocol==='file:' || BUILD_ID.startsWith('__')) return;
   try{ const v=(await (await fetch('version.txt?t='+Date.now(),{cache:'no-store'})).text()).trim();
