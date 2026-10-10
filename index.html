@@ -1732,7 +1732,7 @@ function filtered(){
     if (S.routes.size && !S.routes.has(p.route||'')) return false;
     if (q && !(p.name+' '+p.recipient+' '+(p.note||'')+' '+(p.route||'')+' '+(p.phone||'')).toLowerCase().includes(q)) return false;
     const it=itemOf(p.id);
-    if (S.st==='nopin') return !hasPin(p) && (!!it || !!q);
+    if (S.st==='nopin') return needPin(p) && (!!it || !!q);
     if (S.st==='out') return !it;
     if (!it && !q) return false;   // จุดที่ไม่ส่งเรื่องนี้ ซ่อนไว้ (ยกเว้นตอนค้นหา)
     if (S.st==='pending'||S.st==='delivered'){ if(!it || effStatus(it)!==S.st) return false; }
@@ -1763,7 +1763,7 @@ function renderProgress(){
 function renderChips(){
   const inF=p=>(!S.cats.size||S.cats.has(p.category)) && (!S.routes.size||S.routes.has(p.route||''));
   const all=S.places.filter(inF), inSet=all.filter(p=>itemOf(p.id)), c=countItems(inSet.map(p=>itemOf(p.id)));
-  const nopin=inSet.filter(p=>!hasPin(p)).length, out=all.length-inSet.length;
+  const nopin=inSet.filter(needPin).length, out=all.length-inSet.length;
   const sts=[['all',`ทั้งหมด ${c.total}`],['pending',`ระหว่างส่ง ${c.pending}`],['delivered',`ส่งสำเร็จ ${c.delivered}`],...(out?[['out',`ไม่ส่งเรื่องนี้ ${out}`]]:[]),['nopin',`ยังไม่ปักหมุด ${nopin}`]];
   if(!sts.some(s=>s[0]===S.st)) S.st='all';
   $('stChips').innerHTML = sts.map(([k,t])=>`<button class="chip ${S.st===k?'on':''}" data-st="${k}">${t}</button>`).join('');
@@ -1831,7 +1831,7 @@ function renderList(){
     return `<div class="row ${S.sel===p.id?'sel':''} ${PIN&&PIN.id===p.id?'pinning':''} ${it?'':'out'}" data-id="${esc(p.id)}">
       <span class="mk" style="background:${esc(markColor(p,it))}">${svgUse(markIcon(p,it))}</span>
       <div class="b"><div class="t">${esc(p.name)}</div><div class="s">${esc(p.recipient||p.category)}${p.route?' · '+esc(p.route):''}</div></div>
-      <div class="r">${it?statusTag(it):'<span class="tag out">ไม่ส่งเรื่องนี้</span>'}<div class="btns">${!hasPin(p)?`<button class="pinq" data-pin="${esc(p.id)}" title="ปักหมุด">📍${pend?'':' ปักหมุด'}</button>`:''}${pend?`<button class="sendq" data-send="${esc(p.id)}">📝 บันทึก</button>`:''}</div>${dist?`<div style="color:var(--ink-2)">${dist}</div>`:''}</div>
+      <div class="r">${it?statusTag(it):'<span class="tag out">ไม่ส่งเรื่องนี้</span>'}<div class="btns">${needPin(p)?`<button class="pinq" data-pin="${esc(p.id)}" title="ปักหมุด">📍${pend?'':' ปักหมุด'}</button>`:''}${pend?`<button class="sendq" data-send="${esc(p.id)}">📝 บันทึก</button>`:''}</div>${dist?`<div style="color:var(--ink-2)">${dist}</div>`:''}</div>
     </div>`;}).join('');
 }
 
@@ -2216,6 +2216,10 @@ async function busy(btn, fn){ const t=btn.textContent; btn.disabled=true; btn.te
 /* ============ รายละเอียดจุด ============ */
 /* ===== คนรับฝากประจำ (ฐานข้อมูล) ===== */
 const courierBy = n => (S.couriers||[]).find(c=>c.name===n);
+// จุดที่ฝากคนอื่นส่ง (ฝากแล้วในเรื่องนี้ หรืออยู่ในรายชื่อประจำของคนรับฝาก) ไม่ต้องปักหมุด
+function viaHandled(p){ const it=itemOf(p.id); if(it && it.status==='delivered' && it.via) return true;
+  return (S.couriers||[]).some(c=>String(c.places||'').split(',').includes(p.id)); }
+function needPin(p){ return !hasPin(p) && !viaHandled(p); }
 const courierPlaces = c => String((c&&c.places)||'').split(',').filter(Boolean);
 function viaNames(){ const c={}; S.items.forEach(i=>{ if(i.via) c[i.via]=(c[i.via]||0)+1; });
   (S.couriers||[]).forEach(x=>{ c[x.name]=(c[x.name]||0)+100; });   // คนที่บันทึกไว้ขึ้นก่อน
@@ -2683,7 +2687,7 @@ async function addCategory(){
 /* ============ โหมดปักหมุด ============ */
 let PIN=null;
 function nextUnpinned(afterId){
-  const arr=filtered().filter(p=>!hasPin(p)); if(!arr.length) return null;
+  const arr=filtered().filter(needPin); if(!arr.length) return null;
   const i=arr.findIndex(p=>p.id===afterId); return (arr[i+1]||arr.find(p=>p.id!==afterId))||null;
 }
 function startPin(id){
@@ -2848,7 +2852,7 @@ function exportCsv(){
 }
 
 /* ============ ตรวจหารุ่นใหม่ (สำหรับแอปบนหน้าจอโฮมที่ไม่มีปุ่มรีเฟรช) ============ */
-const BUILD_ID='20261010173712';
+const BUILD_ID='20261010174219';
 async function checkUpdate(){
   if(location.protocol==='file:' || BUILD_ID.startsWith('__')) return;
   try{ const v=(await (await fetch('version.txt?t='+Date.now(),{cache:'no-store'})).text()).trim();
