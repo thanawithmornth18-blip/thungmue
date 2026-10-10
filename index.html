@@ -2227,7 +2227,7 @@ function viaNames(){ const c={}; S.items.forEach(i=>{ if(i.via) c[i.via]=(c[i.vi
 // บันทึก/อัปเดตคนรับฝากอัตโนมัติ: จำว่าเคยฝากจุดไหนบ้าง ครั้งหน้าเลือกจุดเดิมได้ทีเดียว
 async function rememberCourier(name, ids){
   const c=courierBy(name), old=courierPlaces(c), all=[...new Set([...old,...ids])];
-  try{ const out=await api('saveCourier',{name, oldName:c?name:'', places:all.join(',')}); if(c) Object.assign(c,out); else (S.couriers=S.couriers||[]).push(out); }catch(e){}
+  try{ const out=await api('saveCourier',{name, oldName:c?name:'', places:all.join(',')}); if(c) Object.assign(c,out); else (S.couriers=S.couriers||[]).push(out); renderList(); }catch(e){}
 }
 function courierEditor(name, after){
   const c=name?courierBy(name):null, cnt=S.items.filter(i=>i.via===name).length;
@@ -2250,7 +2250,7 @@ function courierEditor(name, after){
   });
 }
 // ฟอร์มบันทึก/แก้คนรับฝาก แบบซ้อนบนหน้าบันทึกการส่ง (ไม่ปิดหน้าเดิม)
-function courierFormInline(name, done){
+function courierFormInline(name, done, ids){
   const c=name?courierBy(name):null;
   const box=document.createElement('div'); box.className='ovl'; box.style.zIndex=1100;
   box.innerHTML=`<div class="sheet"><h2>${c?'แก้ไขคนรับฝาก':'บันทึกคนรับฝากประจำ'}</h2><div class="stack">
@@ -2262,9 +2262,12 @@ function courierFormInline(name, done){
   box.querySelector('#ciX').onclick=()=>{ box.remove(); done(); };
   box.querySelector('#ciOk').onclick=e=>busy(e.target, async()=>{
     const nm=box.querySelector('#ciName').value.trim(); if(!nm){ toast('กรุณาใส่ชื่อ'); return; }
-    const out=await api('saveCourier',{name:nm, oldName:c?c.name:'', phone:box.querySelector('#ciPhone').value.trim(), note:box.querySelector('#ciNote').value.trim()});
-    S.couriers=(S.couriers||[]).filter(x=>x.name!==(c?c.name:nm)); S.couriers.push(out);
-    box.remove(); toast('บันทึกคนรับฝากแล้ว'); done(nm); });
+    const pl=[...new Set([...courierPlaces(c||courierBy(nm)),...(ids||[])])].join(',');   // จุดที่กำลังฝากอยู่ นับเป็นจุดประจำของคนนี้ด้วย → หมุดหายทันที
+    const out=await api('saveCourier',{name:nm, oldName:c?c.name:'', phone:box.querySelector('#ciPhone').value.trim(), note:box.querySelector('#ciNote').value.trim(), places:pl});
+    S.couriers=(S.couriers||[]).filter(x=>x.name!==(c?c.name:nm) && x.name!==nm); S.couriers.push(Object.assign({places:pl},out));
+    // จุดเหล่านี้ย้ายจากคนรับฝากคนอื่น (ถ้ามี)
+    (ids||[]).length && S.couriers.forEach(o=>{ if(o.name===nm) return; const keep=courierPlaces(o).filter(x=>!ids.includes(x)); if(keep.length!==courierPlaces(o).length){ o.places=keep.join(','); api('saveCourier',{name:o.name, oldName:o.name, places:o.places}).catch(()=>{}); } });
+    box.remove(); renderList(); toast('บันทึกคนรับฝากแล้ว'); done(nm); });
 }
 // เปลี่ยนคนรับฝากของจุดที่บันทึกไปแล้ว (ลายเซ็น/รูป/เวลาเดิมอยู่ครบ) — เลือกเปลี่ยนทั้งชุดที่ฝากพร้อมกันได้
 function changeVia(pid){
@@ -2387,7 +2390,12 @@ function bindDeliver(el, p, it, close, startMode){
       el.querySelectorAll('#dvMode button').forEach(x=>x.classList.toggle('on',x===b));
       q('#pSelf').classList.toggle('hide',mode!=='self'); q('#pVia').classList.toggle('hide',mode!=='via'); q('#pOnline').classList.toggle('hide',mode!=='online'); q('#pProof').classList.toggle('hide',mode==='online');
       q('#dvOk').classList.toggle('hide',mode==='online'); q('#dvNoteL').classList.toggle('hide',mode==='via'); okText();
-      if(mode==='via') q('#dvVia').focus(); if(mode==='online') loadDoc(); };
+      if(mode==='via'){ const v=q('#dvVia'); if(!v.value.trim()){
+          // ขึ้นชื่อทันที: คนที่รับฝากจุดนี้ประจำ → ถ้าไม่มี ใช้คนที่ฝากบ่อยสุด
+          const own=(S.couriers||[]).find(c=>courierPlaces(c).includes(p.id)), top=viaNames()[0];
+          v.value=own?own.name:(top||''); }
+        viaInfo(); if(!v.value) v.focus(); }
+      if(mode==='online') loadDoc(); };
     const viaInfo=()=>{ const c=courierBy(q('#dvVia').value.trim()), box=q('#dvViaInfo'); if(!box) return;
       const sb=q('#dvViaSave'); if(sb) sb.textContent= c ? '✏️ แก้ไข' : '💾 บันทึก';
       const nm=q('#dvVia').value.trim();
@@ -2399,7 +2407,7 @@ function bindDeliver(el, p, it, close, startMode){
     el.querySelectorAll('[data-via]').forEach(b=>b.onclick=()=>{ q('#dvVia').value=b.dataset.via; viaInfo(); });
     q('#dvVia').addEventListener('input',viaInfo);
     q('#dvViaSave').onclick=()=>{ const nm=q('#dvVia').value.trim();
-      courierFormInline(nm, saved=>{ if(saved){ q('#dvVia').value=saved; } viaInfo(); }); };
+      courierFormInline(nm, saved=>{ if(saved){ q('#dvVia').value=saved; } viaInfo(); }, [p.id,...extra]); };
     q('#dvPhoto').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; photo=await shrink(f); q('#dvPrev').src=photo; q('#dvPrev').classList.remove('hide'); };
     q('#dvSign').onclick=()=>signPad(mode==='via'&&q('#dvVia').value.trim()?q('#dvVia').value.trim():(q('#dvRecv').value.trim()||p.recipient||p.name), d=>{ sign=d; q('#dvSignPrev').src=d; q('#dvSignPrev').classList.remove('hide'); q('#dvSign').textContent='✍️ เซ็นใหม่';
       // เซ็นเสร็จ = ส่งสำเร็จ บันทึกให้อัตโนมัติ (ถ้าฝากส่งต้องมีชื่อคนรับฝากก่อน)
@@ -2852,7 +2860,7 @@ function exportCsv(){
 }
 
 /* ============ ตรวจหารุ่นใหม่ (สำหรับแอปบนหน้าจอโฮมที่ไม่มีปุ่มรีเฟรช) ============ */
-const BUILD_ID='20261010174219';
+const BUILD_ID='20261010175154';
 async function checkUpdate(){
   if(location.protocol==='file:' || BUILD_ID.startsWith('__')) return;
   try{ const v=(await (await fetch('version.txt?t='+Date.now(),{cache:'no-store'})).text()).trim();
