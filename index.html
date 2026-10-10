@@ -352,7 +352,7 @@ label.f input,label.f select,label.f textarea{border:1px solid var(--line);borde
   header .seal{width:48px;height:48px;margin-left:8px;border-width:2px} header .seal svg{width:34px;height:28px}
   header h1{font-size:17px;margin-left:12px;white-space:normal} header .org{font-size:12px;margin-left:12px;white-space:normal}
   header .art{width:38%;opacity:.5}
-  #demoTag{position:absolute;right:8px;bottom:6px;margin:0;font-size:11px}
+  #demoTag{position:absolute;right:6px;top:6px;margin:0;font-size:10.5px;padding:1px 7px;opacity:.95}
   #progress .txt{font-size:13.5px}
   nav#nav{background:#fff} nav#nav .art{display:none}
   nav#nav button{color:var(--ink-2)} nav#nav button .ic svg{fill:var(--ink-2)}
@@ -372,13 +372,30 @@ label.f input,label.f select,label.f textarea{border:1px solid var(--line);borde
 
 /* print sign sheet */
 #printArea{display:none}
+.sdoc{font-family:'Sarabun',sans-serif;color:#000;font-size:15px;background:#fff}
+.sdoc h1{text-align:center;font-size:20px;margin:0}
+.sdoc .s{text-align:center;margin:2px 0 10px;line-height:1.5}
+.sdoc table{width:100%;border-collapse:collapse}
+.sdoc th,.sdoc td{border:1px solid #000;padding:4px 6px;vertical-align:top}
+.sdoc th{background:#eee}
+.sdoc tr{page-break-inside:avoid;break-inside:avoid}
+.sdoc td{height:34px}
+.sdoc .g td{background:#f3f3f3;font-weight:700;height:auto}
+.sdoc .f{margin-top:16px;text-align:right;font-size:13.5px}
+.sdoc small{font-size:12.5px}
+#pvw{position:fixed;inset:0;z-index:1500;background:#dfe5ec;display:flex;flex-direction:column}
+#pvw .pvbar{flex:none;display:flex;gap:6px;align-items:center;padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top));background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+#pvw .pvbar b{flex:1;min-width:0;color:var(--navy);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pvw .scroll{flex:1;overflow:auto;padding:12px;-webkit-overflow-scrolling:touch}
+#pvw .fit{margin:0 auto}
+#pvw .paper{background:#fff;width:794px;padding:40px 38px;box-shadow:0 2px 12px rgba(0,0,0,.15);transform-origin:top left}
 @media print{
   @page{size:A4;margin:18mm 16mm}
   html,body{background:#fff!important}
   body *{visibility:hidden}
-  #app,.ovl,#toast,#login,nav{display:none!important}
+  #app,.ovl,#toast,#login,nav,#pvw{display:none!important}
   #printArea,#printArea *{visibility:visible}
-  #printArea{display:block;position:absolute;left:0;top:0;width:100%;font-family:'Sarabun',sans-serif;color:#000;font-size:15pt}
+  #printArea{display:block;position:absolute;left:0;top:0;width:100%;font-size:15pt}
   #printArea h1{text-align:center;font-size:18pt;margin:0}
   #printArea .s{text-align:center;margin:0 0 10pt}
   #printArea table{width:100%;border-collapse:collapse}
@@ -567,7 +584,8 @@ function thDate(iso, withTime){ if(!iso) return ''; const d=new Date(iso); if(is
 
 /* ============ API (จริง + โหมดทดลอง) ============ */
 function netState(ok){ const t=$('demoTag'); if(DEMO||!t) return; t.classList.remove('hide'); t.classList.toggle('live',ok); t.classList.toggle('off',!ok);
-  t.textContent= ok ? '☁ เชื่อมชีตแล้ว · '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) : '⚠ ยังไม่เชื่อมชีต'; }
+  t.textContent= ok ? '☁ '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) : '⚠ ออฟไลน์';
+  t.title= ok ? 'เชื่อมชีตแล้ว บันทึก/โหลดล่าสุดเวลานี้' : 'ยังไม่เชื่อมชีต ข้อมูลยังไม่ถูกบันทึก'; }
 async function api(action, payload={}){
   if (DEMO) return demoApi(action, payload);
   let res; try{ res = await fetch(API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
@@ -959,7 +977,7 @@ function menuSheet(){
     <button data-m="mail"><span class="ico">📧</span><span><b>ส่งอีเมลหลายคนพร้อมกัน (${em})</b><small>เลือกผู้รับที่มีอีเมล แนบไฟล์หนังสือของเรื่องนี้</small></span></button>
     <button data-m="lineb"><span class="ico">📨</span><span><b>ส่งหนังสือทาง LINE หลายคน</b><small>ส่งทีละคน ขึ้นต้น "เรียน" ตามชื่อแต่ละคน</small></span></button>
     <button data-m="line"><span class="ico">📊</span><span><b>รายงานความคืบหน้าให้ทีม/หัวหน้า</b><small>สรุปยอดส่งแล้ว-ค้าง ส่งเข้ากลุ่ม LINE ของงาน (ไม่ใช่ส่งให้ผู้รับ)</small></span></button>
-    <button data-m="print"><span class="ico">🖨️</span><span><b>พิมพ์ใบเซ็นรับ</b><small>ตามตัวกรองที่เลือกอยู่ จุดที่เซ็นบนมือถือแล้วจะมีลายเซ็นติดไปด้วย</small></span></button>
+    <button data-m="print"><span class="ico">🖨️</span><span><b>ใบเซ็นรับ (ดูตัวอย่าง / พิมพ์ / PDF)</b><small>ตามตัวกรองที่เลือกอยู่ จุดที่เซ็นบนมือถือแล้วจะมีลายเซ็นติดไปด้วย</small></span></button>
     <button data-m="csv"><span class="ico">📊</span><span><b>ส่งออก Excel</b><small>สถานะการส่งทุกจุดในเรื่องนี้</small></span></button>
     <button data-m="add"><span class="ico">➕</span><span><b>เพิ่มรายชื่อจุดส่ง</b><small>หน่วยงาน/บุคคลที่ยังไม่มีในระบบ</small></span></button>
   </div>`, (el,close)=>{
@@ -1845,23 +1863,51 @@ function roundRows(){
   return scopePlaces().map(p=>({p, it:itemOf(p.id)||{status:'pending'}}))
     .sort((a,b)=>(order.get(a.p.category)??99)-(order.get(b.p.category)??99) || S.places.indexOf(a.p)-S.places.indexOf(b.p));
 }
-function printSheet(){
+function sheetHtml(){
   const rows=roundRows(); let cur='', n=0;
   const scope=[...S.cats,...S.routes].join(', ');
   const body=rows.map(({p,it})=>{ let g=''; if(p.category!==cur){cur=p.category; g=`<tr class="g"><td colspan="4">${esc(cur)}</td></tr>`;} n++;
     const person=/ผู้บริหาร|ผู้ทรงคุณวุฒิ|แขก/.test(p.category);
     const who=person ? `${esc(p.name)}<br><small>${esc(p.recipient)}</small>` : esc(p.recipient||p.name);
     const done=it&&it.status==='delivered';
-    const sig=it&&it.signId?`<img src="${esc(signSrc(it.signId))}" style="max-height:38px;max-width:100%">${it.via?`<br><small>(${esc(it.via)} รับฝาก)</small>`:''}`:done&&it.via?`<small>ฝาก ${esc(it.via)}</small>`:done&&METHOD_TXT[it.method]?`<small>${METHOD_TXT[it.method]}</small>`:'';
+    const sig=it&&it.signId?`<img src="${esc(signSrc(it.signId))}" crossorigin="anonymous" style="max-height:38px;max-width:100%">${it.via?`<br><small>(${esc(it.via)} รับฝาก)</small>`:''}`:done&&it.via?`<small>ฝาก ${esc(it.via)}</small>`:done&&METHOD_TXT[it.method]?`<small>${METHOD_TXT[it.method]}</small>`:'';
     return g+`<tr><td style="text-align:center">${n}</td><td>${who}</td><td style="text-align:center">${sig}</td><td style="text-align:center;white-space:nowrap">${done&&it.at?esc(thDate(it.at)):''}</td></tr>`; }).join('');
   const r=curRound()||{};
-  $('printArea').innerHTML=`<h1>ใบเซ็นรับหนังสือ</h1>
+  return `<h1>ใบเซ็นรับหนังสือ</h1>
     <p class="s">${r.title?'เรื่อง '+esc(r.title)+'<br>':''}งานประเพณีฯ กองการศึกษา เทศบาลนครแหลมฉบัง${scope?' · '+esc(scope):''}</p>
     <table><thead><tr><th style="width:7%">ที่</th><th>ผู้รับ / หน่วยงาน</th><th style="width:30%">ลายมือชื่อผู้รับ</th><th style="width:16%">วันที่รับ</th></tr></thead><tbody>${body}</tbody></table>
     <p class="f">ผู้นำส่ง ........................................................ &nbsp; พิมพ์เมื่อ ${esc(new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}))}</p>`;
-  const imgs=[...$('printArea').querySelectorAll('img')];
-  Promise.all(imgs.map(i=>i.complete?0:new Promise(ok=>{ i.onload=i.onerror=ok; setTimeout(ok,4000); }))).then(()=>setTimeout(()=>window.print(),50));
 }
+const imgsReady=el=>Promise.all([...el.querySelectorAll('img')].map(i=>i.complete?0:new Promise(ok=>{ i.onload=i.onerror=ok; setTimeout(ok,5000); })));
+// ดูตัวอย่างก่อน แล้วเลือก พิมพ์ หรือ บันทึกเป็น PDF (แอปบนหน้าจอโฮมของ iPhone สั่งพิมพ์ตรงไม่ได้ ใช้ PDF แทน)
+function printSheet(){
+  const html=sheetHtml(), r=curRound()||{}, n=roundRows().length;
+  const v=document.createElement('div'); v.id='pvw';
+  v.innerHTML=`<div class="pvbar"><button class="btn" id="pvX">✕ ปิด</button><b>ตัวอย่าง · ${n} รายการ</b><button class="btn" id="pvPrint">🖨 พิมพ์</button><button class="btn pri" id="pvPdf">⬇ PDF</button></div>
+    <div class="scroll"><div class="fit"><div class="paper sdoc">${html}</div></div></div>`;
+  document.body.appendChild(v);
+  // ย่อทั้งแผ่นให้พอดีจอ หน้าตาเหมือนไฟล์ PDF ที่จะได้
+  const fit=()=>{ const pp=v.querySelector('.paper'), k=Math.min(1,(v.querySelector('.scroll').clientWidth-24)/794);
+    pp.style.transform=`scale(${k})`; const f=v.querySelector('.fit'); f.style.width=794*k+'px'; f.style.height=pp.offsetHeight*k+'px'; };
+  fit(); imgsReady(v).then(fit); window.addEventListener('resize',fit);
+  v.querySelector('#pvX').onclick=()=>{ window.removeEventListener('resize',fit); v.remove(); };
+  v.querySelector('#pvPrint').onclick=async()=>{
+    if(navigator.standalone){ toast('แอปบนหน้าจอโฮมของ iPhone สั่งพิมพ์ตรงไม่ได้ — กด ⬇ PDF แล้วพิมพ์จากไฟล์ PDF แทน',5000); return; }
+    $('printArea').className='sdoc'; $('printArea').innerHTML=html; await imgsReady($('printArea')); setTimeout(()=>window.print(),50); };
+  v.querySelector('#pvPdf').onclick=e=>busy(e.target, async()=>{
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
+    const box=document.createElement('div'); box.style.cssText='position:fixed;left:-10000px;top:0';
+    box.innerHTML=`<div class="sdoc" style="width:718px;padding:0">${html}</div>`; document.body.appendChild(box);
+    const doc=box.firstElementChild; await imgsReady(doc);
+    try{
+      await window.html2pdf().set({ margin:[12,12,12,12], filename:`ใบเซ็นรับ-${(r.title||'ถึงมือ').slice(0,40)}.pdf`,
+        image:{type:'jpeg',quality:.95}, html2canvas:{scale:2,useCORS:true,backgroundColor:'#fff'},
+        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}, pagebreak:{mode:['css','legacy'],avoid:'tr'} }).from(doc).save();
+      toast('ได้ไฟล์ PDF แล้ว — เปิดแล้วกดแชร์ → พิมพ์ ได้เลย',4500);
+    } finally { box.remove(); }
+  });
+}
+function loadScript(src){ return new Promise((ok,no)=>{ if(document.querySelector(`script[src="${src}"]`)) return ok(); const sc=document.createElement('script'); sc.src=src; sc.onload=ok; sc.onerror=()=>no(new Error('โหลดตัวสร้าง PDF ไม่ได้ ตรวจสอบสัญญาณอินเทอร์เน็ต')); document.head.appendChild(sc); }); }
 function exportCsv(){
   const st=ST_TEXT;
   const head=['ที่','ประเภท','สายส่ง','ชื่อ','ผู้รับ/ตำแหน่ง','สถานะ','ผู้บันทึก','ฝากส่งโดย','ผู้รับเอกสาร','เวลา','หมายเหตุ','ลิงก์รูป'];
@@ -1873,7 +1919,7 @@ function exportCsv(){
 }
 
 /* ============ ตรวจหารุ่นใหม่ (สำหรับแอปบนหน้าจอโฮมที่ไม่มีปุ่มรีเฟรช) ============ */
-const BUILD_ID='20261010155129';
+const BUILD_ID='20261010160158';
 async function checkUpdate(){
   if(location.protocol==='file:' || BUILD_ID.startsWith('__')) return;
   try{ const v=(await (await fetch('version.txt?t='+Date.now(),{cache:'no-store'})).text()).trim();
