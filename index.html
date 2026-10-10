@@ -2277,7 +2277,7 @@ function changeVia(pid){
   modal(`<h2>เปลี่ยนคนรับฝาก</h2><div class="sub">ตอนนี้: <b>${esc(it.via)}</b> · ลายเซ็น รูป และวันที่เดิมยังอยู่ครบ</div>
     <div class="stack">
       <label class="f">เปลี่ยนเป็น<input id="cvName" placeholder="ชื่อคนรับฝากคนใหม่"></label>
-      ${names.length?`<div class="viaPick">${names.map(n=>`<button type="button" data-cv="${esc(n)}">${courierBy(n)?'⭐ ':''}${esc(n)}</button>`).join('')}</div>`:''}
+      ${names.length?`<div class="viaPick">${names.map(n=>`<button type="button" data-cv="${esc(n)}">${esc(n)}</button>`).join('')}</div>`:''}
       ${grp.length>1?`<label class="chk"><input type="checkbox" id="cvAll" checked><span>เปลี่ยนทั้ง ${grp.length} จุดที่ฝาก ${esc(it.via)} ไว้พร้อมกัน</span></label>`:''}
       <button class="btn pri bigok" id="cvOk">บันทึกการเปลี่ยน</button>
     </div>`, (el,close)=>{
@@ -2356,7 +2356,7 @@ function deliverFormHtml(p){ return `    <div class="stack">
       </div>
       <div id="pVia" class="stack hide">
         <label class="f">ฝากใครส่ง (ชื่อ/ตำแหน่ง)<span style="display:flex;gap:6px"><input id="dvVia" style="flex:1;min-width:0" placeholder="เช่น สท.สมชาย / ประธานชุมชน / ครูเวร"><button type="button" class="btn" id="dvViaSave" style="flex:none">💾 บันทึก</button></span></label>
-        ${viaNames().length?`<div class="viaPick">${viaNames().map(n=>`<button type="button" data-via="${esc(n)}">${courierBy(n)?'⭐ ':''}${esc(n)}</button>`).join('')}</div>`:''}
+        ${viaNames().length?`<div class="viaPick">${viaNames().map(n=>`<button type="button" data-via="${esc(n)}">${esc(n)}</button>`).join('')}</div>`:''}
         <div id="dvViaInfo"></div>
       </div>
       <div id="pProof" class="stack">
@@ -2401,6 +2401,7 @@ function bindDeliver(el, p, it, close, startMode){
       const nm=q('#dvVia').value.trim();
       if(!c){ box.innerHTML= nm ? `<div class="muted" style="font-size:13px">กด ✓ ฝากส่งแล้ว ระบบบันทึก "${esc(nm)}" เป็นคนรับฝากประจำให้เอง · หรือกด 💾 บันทึก เพื่อใส่เบอร์โทรก่อน</div>` : ''; return; }
       const pend=courierPlaces(c).filter(id=>id!==p.id && (()=>{ const it2=itemOf(id); return it2 && it2.status!=='delivered'; })());
+      if(!c.phone && !c.note && !pend.length){ box.innerHTML=''; return; }
       box.innerHTML=`<div class="chk" style="display:block">${c.phone?`📞 <a href="tel:${esc(String(c.phone).replace(/[^\d+]/g,''))}">${esc(c.phone)}</a>`:''}${c.note?` · ${esc(c.note)}`:''}
         ${pend.length?`<button type="button" class="btn" id="dvViaAll" style="width:100%;margin-top:6px">เลือกจุดที่เคยฝาก ${esc(c.name)} อีก ${pend.length} จุด</button>`:''}</div>`;
       const b=box.querySelector('#dvViaAll'); if(b) b.onclick=()=>{ pend.forEach(id=>extra.add(id)); drawMulti(); b.remove(); toast(`เพิ่ม ${pend.length} จุดแล้ว`); }; };
@@ -2860,7 +2861,7 @@ function exportCsv(){
 }
 
 /* ============ ตรวจหารุ่นใหม่ (สำหรับแอปบนหน้าจอโฮมที่ไม่มีปุ่มรีเฟรช) ============ */
-const BUILD_ID='20261010175154';
+const BUILD_ID='20261010175557';
 async function checkUpdate(){
   if(location.protocol==='file:' || BUILD_ID.startsWith('__')) return;
   try{ const v=(await (await fetch('version.txt?t='+Date.now(),{cache:'no-store'})).text()).trim();
