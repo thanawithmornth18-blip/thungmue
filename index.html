@@ -2341,13 +2341,14 @@ function bindDeliver(el, p, it, close, startMode){
       q('#dvOk').classList.toggle('hide',mode==='online'); q('#dvNoteL').classList.toggle('hide',mode==='via'); okText();
       if(mode==='via') q('#dvVia').focus(); if(mode==='online') loadDoc(); };
     const viaInfo=()=>{ const c=courierBy(q('#dvVia').value.trim()), box=q('#dvViaInfo'); if(!box) return;
-      if(!c){ box.innerHTML=''; return; }
+      const nm=q('#dvVia').value.trim();
+      if(!c){ box.innerHTML= nm ? `<div class="muted" style="font-size:13px">💾 กด ✓ ฝากส่งแล้ว ระบบจะบันทึก "${esc(nm)}" เป็นคนรับฝากประจำให้เอง พร้อมจำจุดที่ฝาก · ใส่เบอร์โทรได้ที่ เมนู → คนรับฝากประจำ</div>` : ''; return; }
       const pend=courierPlaces(c).filter(id=>id!==p.id && (()=>{ const it2=itemOf(id); return it2 && it2.status!=='delivered'; })());
       box.innerHTML=`<div class="chk" style="display:block">${c.phone?`📞 <a href="tel:${esc(String(c.phone).replace(/[^\d+]/g,''))}">${esc(c.phone)}</a>`:''}${c.note?` · ${esc(c.note)}`:''}
         ${pend.length?`<button type="button" class="btn" id="dvViaAll" style="width:100%;margin-top:6px">เลือกจุดที่เคยฝาก ${esc(c.name)} อีก ${pend.length} จุด</button>`:''}</div>`;
       const b=box.querySelector('#dvViaAll'); if(b) b.onclick=()=>{ pend.forEach(id=>extra.add(id)); drawMulti(); b.remove(); toast(`เพิ่ม ${pend.length} จุดแล้ว`); }; };
     el.querySelectorAll('[data-via]').forEach(b=>b.onclick=()=>{ q('#dvVia').value=b.dataset.via; viaInfo(); });
-    q('#dvVia').addEventListener('change',viaInfo);
+    q('#dvVia').addEventListener('input',viaInfo);
     q('#dvPhoto').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; photo=await shrink(f); q('#dvPrev').src=photo; q('#dvPrev').classList.remove('hide'); };
     q('#dvSign').onclick=()=>signPad(mode==='via'&&q('#dvVia').value.trim()?q('#dvVia').value.trim():(q('#dvRecv').value.trim()||p.recipient||p.name), d=>{ sign=d; q('#dvSignPrev').src=d; q('#dvSignPrev').classList.remove('hide'); q('#dvSign').textContent='✍️ เซ็นใหม่';
       // เซ็นเสร็จ = ส่งสำเร็จ บันทึกให้อัตโนมัติ (ถ้าฝากส่งต้องมีชื่อคนรับฝากก่อน)
@@ -2800,7 +2801,7 @@ function exportCsv(){
 }
 
 /* ============ ตรวจหารุ่นใหม่ (สำหรับแอปบนหน้าจอโฮมที่ไม่มีปุ่มรีเฟรช) ============ */
-const BUILD_ID='20261010172115';
+const BUILD_ID='20261010173024';
 async function checkUpdate(){
   if(location.protocol==='file:' || BUILD_ID.startsWith('__')) return;
   try{ const v=(await (await fetch('version.txt?t='+Date.now(),{cache:'no-store'})).text()).trim();
