@@ -641,8 +641,8 @@ async function refresh(silent){
 const map = L.map('map',{zoomControl:true}).setView(MAP_CENTER, 13);
 const ESRI='https://server.arcgisonline.com/ArcGIS/rest/services/';
 const streetLayers=[
-  L.tileLayer(ESRI+'World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri'}),
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}),
+  L.tileLayer(ESRI+'World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri'}),
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:20,subdomains:'abcd',attribution:'© OpenStreetMap contributors © CARTO'}),
 ];
 // ดาวเทียมแบบมีชื่อถนนและชื่อสถานที่ทับ (คล้ายมุมมองดาวเทียมของ Google Maps)
