@@ -2619,13 +2619,14 @@ function searchVariants(q){
   const en=q.match(/[A-Za-z][A-Za-z0-9 .&-]{2,}/); if(en) v.push(en[0].trim());
   return [...new Set(v)];
 }
-async function googleSearch(q){
+let GERR='';
+async function googleSearch(q){ GERR='';
   try{
     const {Place}=await google.maps.importLibrary('places');
     const {places}=await Place.searchByText({ textQuery:q, fields:['displayName','formattedAddress','location'], language:'th', region:'th', maxResultCount:8,
       locationBias:{center:{lat:MAP_CENTER[0],lng:MAP_CENTER[1]},radius:30000} });
     return (places||[]).map(x=>({lat:x.location.lat(), lng:x.location.lng(), name:(x.displayName||'')+(x.formattedAddress?' — '+x.formattedAddress:''), g:true}));
-  }catch(e){ console.warn('google search',e); return null; }
+  }catch(e){ console.warn('google search',e); GERR=String(e&&e.message||e).slice(0,160); return null; }
 }
 async function placeSearch(q){
   if(GOOGLE){ const g=await googleSearch(q); if(g && g.length) return g; }
@@ -2648,6 +2649,7 @@ $('pinSearchGo').onclick=e=>busy(e.target, async()=>{
   const km=x=>{ const m=map.distance(MAP_CENTER,[x.lat,x.lng]); return m<1000?Math.round(m)+' ม.':(m/1000).toFixed(1)+' กม.'; };
   $('pinResults').innerHTML = (r.length ? r.map(x=>`<div data-ll="${x.lat},${x.lng}">${esc(x.name)} <small style="color:var(--ink-2)">· ห่าง ${km(x)}</small></div>`).join('')
       : `<div style="color:var(--ink-2);cursor:default">${GOOGLE?'ไม่พบ ลองพิมพ์ชื่อให้สั้นลง':'ไม่พบในแผนที่ฟรี (บริษัทในนิคม/ท่าเรือมักไม่มีชื่อ)'}</div>`)
+    + (GERR?`<div style="color:var(--red);cursor:default;font-size:12.5px">ค้นด้วย Google ไม่ได้: ${esc(GERR)}</div>`:'')
     + `<div class="gtip">ไม่เจอ? <a href="${g}" target="_blank" rel="noopener">ค้นใน Google Maps ↗</a> เจอแล้ว<b>แตะค้างที่ตึก</b> จะขึ้นตัวเลขพิกัด แตะคัดลอก แล้วกลับมากด <b>🔗 ลิงก์/พิกัด</b> วางได้เลย</div>`;
 });
 $('pinSearch').onkeydown=e=>{ if(e.key==='Enter') $('pinSearchGo').click(); };
@@ -2724,7 +2726,7 @@ function exportCsv(){
 }
 
 /* ============ ตรวจหารุ่นใหม่ (สำหรับแอปบนหน้าจอโฮมที่ไม่มีปุ่มรีเฟรช) ============ */
-const BUILD_ID='20261010162442';
+const BUILD_ID='20261010163834';
 async function checkUpdate(){
   if(location.protocol==='file:' || BUILD_ID.startsWith('__')) return;
   try{ const v=(await (await fetch('version.txt?t='+Date.now(),{cache:'no-store'})).text()).trim();
