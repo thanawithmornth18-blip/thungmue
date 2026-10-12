@@ -1390,7 +1390,16 @@ function thDate(iso, withTime){ if(!iso) return ''; const d=new Date(iso); if(is
 function netState(ok){ const t=$('demoTag'); if(DEMO||!t) return; t.classList.remove('hide'); t.classList.toggle('live',ok); t.classList.toggle('off',!ok);
   t.textContent= ok ? '☁ '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) : '⚠ ออฟไลน์';
   t.title= ok ? 'เชื่อมชีตแล้ว บันทึก/โหลดล่าสุดเวลานี้' : 'ยังไม่เชื่อมชีต ข้อมูลยังไม่ถูกบันทึก'; }
+// ชีตกำลังบันทึกของคนอื่นอยู่ (ล็อกเต็ม) → รอแล้วลองใหม่ให้เอง
 async function api(action, payload={}){
+  for(let t=0;;t++){
+    try{ return await api1(action, payload); }
+    catch(e){ if(!/ล็อก|lock/i.test(e.message)) throw e;
+      if(t>=2) throw new Error('ชีตกำลังบันทึกข้อมูลของคนอื่นอยู่ ข้อมูลยังไม่ถูกบันทึก รอสักครู่แล้วกดใหม่อีกครั้ง');
+      await new Promise(ok=>setTimeout(ok, 2500*(t+1))); }
+  }
+}
+async function api1(action, payload={}){
   if (DEMO) return demoApi(action, payload);
   let res; try{ res = await fetch(API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
     body: JSON.stringify(Object.assign({action, code:S.code}, payload))}); }catch(e){ netState(false); throw new Error('ไม่มีสัญญาณ หรือเชื่อมต่อชีตไม่ได้ — ข้อมูลยังไม่ถูกบันทึก ลองใหม่อีกครั้ง'); }
@@ -2961,7 +2970,7 @@ function exportCsv(){
 }
 
 /* ============ ตรวจหารุ่นใหม่ (สำหรับแอปบนหน้าจอโฮมที่ไม่มีปุ่มรีเฟรช) ============ */
-const BUILD_ID='20261010195948';
+const BUILD_ID='20261012100609';
 async function checkUpdate(){
   if(location.protocol==='file:' || BUILD_ID.startsWith('__')) return;
   try{ const v=(await (await fetch('version.txt?t='+Date.now(),{cache:'no-store'})).text()).trim();
