@@ -1280,6 +1280,7 @@ label.f input,label.f select,label.f textarea{border:1px solid var(--line);borde
     <button class="dsk" data-a="cour"><span class="ic"><svg viewBox="0 0 24 24"><use href="#c-person"/></svg></span><span class="lbl">คนรับฝากประจำ</span></button>
     <button class="dsk" data-a="rep"><span class="ic"><svg viewBox="0 0 24 24"><use href="#i-doc"/></svg></span><span class="lbl">รายงานผลการส่ง</span></button>
     <button class="dsk" data-a="print"><span class="ic"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg></span><span class="lbl">ใบเซ็นรับ</span></button>
+    <button class="dsk" data-a="hist"><span class="ic"><svg viewBox="0 0 24 24"><use href="#i-clock"/></svg></span><span class="lbl">ประวัติเรื่องที่ส่ง</span></button>
     <div class="nsep dsk"></div>
     <button data-v="data"><span class="ic"><svg viewBox="0 0 24 24"><use href="#i-gear"/></svg></span><span class="lbl">ข้อมูลและสำรอง</span></button>
     <div class="art" aria-hidden="true"></div>
@@ -1479,7 +1480,7 @@ async function demoApi(a, r){
   const item = ()=>{ const it=db.items.find(i=>i.roundId===r.roundId&&i.placeId===r.placeId); if(!it) throw new Error('ไม่พบรายการ'); return it; };
   let out;
   switch(a){
-    case 'load': out={categories:db.categories, places:db.places.filter(p=>p.active!==false), rounds:db.rounds, items:db.items, routes:db.routes||[], couriers:db.couriers||[]}; break;
+    case 'load': out={categories:db.categories, places:db.places.filter(p=>p.active!==false), gone:db.places.filter(p=>p.active===false), rounds:db.rounds, items:db.items, routes:db.routes||[], couriers:db.couriers||[]}; break;
     case 'saveRoute': { db.routes=db.routes||[]; const name=String(r.name||'').trim(); if(!name) throw new Error('กรุณาตั้งชื่อสายส่ง');
       if(name!==r.oldName && db.routes.some(x=>x.name===name)) throw new Error('มีสายส่งชื่อนี้อยู่แล้ว');
       let rt=db.routes.find(x=>x.name===(r.oldName||name)); if(!rt){ rt={name,people:'',order:db.routes.length+1}; db.routes.push(rt); }
@@ -1607,7 +1608,7 @@ async function refresh(silent){
   try{
     for(let i=0;i<3;i++){   // ถ้าต้องสร้าง/เติมชุดการส่ง ให้โหลดใหม่อีกรอบ
       const d = await api('load');
-      S.categories=d.categories; S.places=d.places; S.rounds=d.rounds; S.items=d.items; S.routeList=d.routes||[]; S.couriers=d.couriers||[];
+      S.categories=d.categories; S.places=d.places; S.gone=d.gone||[]; S.rounds=d.rounds; S.items=d.items; S.routeList=d.routes||[]; S.couriers=d.couriers||[];
       if(!(await ensureCurrent())) break;
     }
     S.cats.forEach(c=>{ if(!S.categories.some(x=>x.name===c)) S.cats.delete(c); });
@@ -1892,12 +1893,13 @@ function menuSheet(){
     <button data-m="line"><span class="ico">📊</span><span><b>รายงานความคืบหน้าให้ทีม/หัวหน้า</b><small>สรุปยอดส่งแล้ว-ค้าง ส่งเข้ากลุ่ม LINE ของงาน (ไม่ใช่ส่งให้ผู้รับ)</small></span></button>
     <button data-m="rep"><span class="ico">📑</span><span><b>รายงานผลการส่ง (PDF)</b><small>สรุปยอด แยกประเภท และรายละเอียดทุกจุด พร้อมลายเซ็น ใช้แนบรายงานผลโครงการ</small></span></button>
     <button data-m="print"><span class="ico">🖨️</span><span><b>ใบเซ็นรับ (ดูตัวอย่าง / พิมพ์ / PDF)</b><small>ตามตัวกรองที่เลือกอยู่ จุดที่เซ็นบนมือถือแล้วจะมีลายเซ็นติดไปด้วย</small></span></button>
+    <button data-m="hist"><span class="ico">🗂️</span><span><b>ประวัติเรื่องที่ส่ง</b><small>ดูย้อนหลังว่าแต่ละเรื่องส่งใครบ้าง ส่งเมื่อไร พิมพ์รายงานเรื่องเก่าได้</small></span></button>
     <button data-m="csv"><span class="ico">📊</span><span><b>ส่งออก Excel</b><small>สถานะการส่งทุกจุดในเรื่องนี้</small></span></button>
     <button data-m="add"><span class="ico">➕</span><span><b>เพิ่มรายชื่อจุดส่ง</b><small>หน่วยงาน/บุคคลที่ยังไม่มีในระบบ</small></span></button>
     <button data-m="rm"><span class="ico">🗑️</span><span><b>นำรายชื่อออก / ลบรายชื่อ</b><small>เลือกหลายคนพร้อมกัน ไม่ส่งเรื่องนี้ หรือลบออกจากระบบ</small></span></button>
   </div>`, (el,close)=>{
     el.querySelector('.menu').onclick=e=>{ const b=e.target.closest('[data-m]'); if(!b) return; close();
-      ({set:setDialog, mail:()=>bulkEmail(), lineb:()=>lineBulk(), cour:courierList, line:lineSummary, print:printSheet, rep:reportSheet, csv:exportCsv, add:()=>editPlace(null), rm:removeNames})[b.dataset.m](); };
+      ({set:setDialog, mail:()=>bulkEmail(), lineb:()=>lineBulk(), cour:courierList, line:lineSummary, print:()=>printSheet(), rep:()=>reportSheet(), hist:historySheet, csv:()=>exportCsv(), add:()=>editPlace(null), rm:removeNames})[b.dataset.m](); };
   });
 }
 
@@ -1971,7 +1973,7 @@ function setView(v){
   if(v==='home') renderHome();
   if(v==='rounds') renderRoundsView();
 }
-$('nav').onclick=e=>{ const a=e.target.closest('button[data-a]'); if(a){ ({set:setDialog, cour:courierList, rep:reportSheet, print:printSheet})[a.dataset.a](); return; }
+$('nav').onclick=e=>{ const a=e.target.closest('button[data-a]'); if(a){ ({set:setDialog, cour:courierList, rep:()=>reportSheet(), print:()=>printSheet(), hist:historySheet})[a.dataset.a](); return; }
   const b=e.target.closest('button[data-v]'); if(b) setView(b.dataset.v); };
 function gotoMap(st, cat){ S.st=st||'all'; S.sel=null; S.cats=new Set(cat?[cat]:[]); S.routes.clear(); setView('map'); renderAll(); renderMap(true); }
 
@@ -2978,11 +2980,15 @@ function sheetHtml(cat){
 }
 const imgsReady=el=>Promise.all([...el.querySelectorAll('img')].map(i=>i.complete?0:new Promise(ok=>{ i.onload=i.onerror=ok; setTimeout(ok,5000); })));
 // ดูตัวอย่างก่อน แล้วเลือก พิมพ์ หรือ บันทึกเป็น PDF (แอปบนหน้าจอโฮมของ iPhone สั่งพิมพ์ตรงไม่ได้ ใช้ PDF แทน)
-async function printSheet(){ const r=curRound()||{};
-  toast('กำลังเตรียมใบเซ็นรับ…'); await loadSigns(roundRows().map(x=>x.it&&x.it.signId));
-  const cats=[...new Set(roundRows().map(x=>x.p.category))];
-  const one=cat=>({html:sheetHtml(cat), label:`${cat||'ทุกประเภท'} · ${roundRows().filter(x=>!cat||x.p.category===cat).length} รายการ`,
-    fname:`ใบเซ็นรับ-${cat?cat.replace(/\//g,'-')+'-':''}${(r.title||'ถึงมือ').slice(0,40)}.pdf`});
+// ทำงานกับเรื่องเก่า: สลับเรื่องชั่วคราว (รวมรายชื่อที่ลบแล้ว) แล้วคืนค่า
+function inRound(rid, fn){ if(!rid||rid===S.roundId) return fn();
+  const o=S.roundId, op=S.places, oc=S.cats, orr=S.routes; S.roundId=rid; S.places=[...S.places,...(S.gone||[])]; S.cats=new Set(); S.routes=new Set();
+  try{ return fn(); } finally{ S.roundId=o; S.places=op; S.cats=oc; S.routes=orr; } }
+async function printSheet(rid){ const r=roundById(rid||S.roundId)||{};
+  toast('กำลังเตรียมใบเซ็นรับ…'); await loadSigns(inRound(rid,()=>roundRows().map(x=>x.it&&x.it.signId)));
+  const cats=inRound(rid,()=>[...new Set(roundRows().map(x=>x.p.category))]);
+  const one=cat=>inRound(rid,()=>({html:sheetHtml(cat), label:`${cat||'ทุกประเภท'} · ${roundRows().filter(x=>!cat||x.p.category===cat).length} รายการ`,
+    fname:`ใบเซ็นรับ-${cat?cat.replace(/\//g,'-')+'-':''}${(r.title||'ถึงมือ').slice(0,40)}.pdf`}));
   previewDoc(one('').html, one('').label, one('').fname, cats.length>1?{opts:cats, pick:one}:null); }
 function previewDoc(html, label, fname, sel){
   const v=document.createElement('div'); v.id='pvw';
@@ -3044,11 +3050,41 @@ function reportHtml(){
     <table><thead><tr><th style="width:6%">ที่</th><th>ผู้รับ / หน่วยงาน</th><th style="width:24%">วิธีส่ง</th><th style="width:22%">ผู้รับเอกสาร / ลายมือชื่อ</th><th style="width:13%">วันที่</th></tr></thead><tbody>${det}</tbody></table>
     <div class="sgn">ลงชื่อ ........................................................ ผู้รายงาน<br>(........................................................)<br>ตำแหน่ง ........................................................</div>`;
 }
-async function reportSheet(){ const r=curRound()||{}; if(!roundItems().length){ toast('ยังไม่มีรายชื่อในเรื่องนี้'); return; }
-  toast('กำลังเตรียมรายงาน…'); await loadSigns(roundItems().map(i=>i.signId));
-  previewDoc(reportHtml(), 'รายงานผลการส่ง', `รายงานผลการส่ง-${(r.title||'ถึงมือ').slice(0,40)}.pdf`); }
+async function reportSheet(rid){ const r=roundById(rid||S.roundId)||{}; if(!inRound(rid,()=>roundItems().length)){ toast('ยังไม่มีรายชื่อในเรื่องนี้'); return; }
+  toast('กำลังเตรียมรายงาน…'); await loadSigns(inRound(rid,()=>roundItems().map(i=>i.signId)));
+  return previewDoc(inRound(rid,reportHtml), 'รายงานผลการส่ง', `รายงานผลการส่ง-${(r.title||'ถึงมือ').slice(0,40)}.pdf`);
+}
+/* ============ ประวัติเรื่องที่ส่ง ============ */
+function historySheet(){
+  const rs=S.rounds.filter(r=>S.items.some(i=>i.roundId===r.id)).slice().reverse();
+  modal(`<h2>ประวัติเรื่องที่ส่ง</h2><div class="sub">แตะเรื่องเพื่อดูว่าส่งใครบ้าง พิมพ์รายงานหรือใบเซ็นรับของเรื่องเก่าได้</div>
+    <div class="vialist">${rs.map(r=>{ const c=countItems(S.items.filter(i=>i.roundId===r.id)), d=r.date||r.createdAt;
+      return `<div class="r" data-rid="${esc(r.id)}"><span><b>${esc(r.title||'(ไม่มีชื่อเรื่อง)')}</b>${r.id===S.roundId?' <span class="tag pending">กำลังส่ง</span>':''}<br><small class="muted">${d?esc(thDate(d)):''}</small></span><small style="text-align:right;white-space:nowrap">ส่งแล้ว <b>${c.delivered}</b>/${c.total}</small></div>`; }).join('')||'<div class="muted">ยังไม่มีเรื่องที่ส่ง</div>'}</div>`, (el,close)=>{
+    el.querySelectorAll('[data-rid]').forEach(x=>x.onclick=()=>{ close(); roundDetail(x.dataset.rid); }); });
+}
+function roundDetail(rid){
+  const r=roundById(rid)||{}, all=[...S.places,...(S.gone||[])], order=new Map(S.categories.map((c,i)=>[c.name,i]));
+  const rows=S.items.filter(i=>i.roundId===rid).map(it=>({it,p:all.find(p=>p.id===it.placeId)||{name:'(ไม่พบรายชื่อ)',category:''}}))
+    .sort((a,b)=>(effStatus(a.it)==='delivered'?0:1)-(effStatus(b.it)==='delivered'?0:1) || String(b.it.at||'').localeCompare(String(a.it.at||'')) || (order.get(a.p.category)??99)-(order.get(b.p.category)??99));
+  const c=countItems(rows.map(x=>x.it));
+  modal(`<h2>${esc(r.title||'(ไม่มีชื่อเรื่อง)')}</h2><div class="sub">${r.date||r.createdAt?esc(thDate(r.date||r.createdAt))+' · ':''}ส่งสำเร็จ <b>${c.delivered}</b>/${c.total}${c.via?` · ฝากส่ง ${c.via}`:''}${c.online?` · ออนไลน์ ${c.online}`:''}</div>
+    <div class="grid2" style="margin-bottom:8px"><button class="btn gold" id="rdRep">📑 รายงานผล PDF</button><button class="btn" id="rdSign">🖨 ใบเซ็นรับ</button></div>
+    <div class="grid2" style="margin-bottom:8px"><button class="btn" id="rdCsv">📊 ส่งออก Excel</button><button class="btn" id="rdBack">‹ เรื่องอื่น</button></div>
+    <label class="f"><input id="rdQ" placeholder="🔍 ค้นชื่อ / ผู้รับ" autocomplete="off"></label>
+    <div class="vialist" id="rdList" style="margin-top:8px"></div>`, (el,close)=>{
+    const q=x=>el.querySelector(x);
+    const draw=()=>{ const k=q('#rdQ').value.trim().toLowerCase();
+      q('#rdList').innerHTML=rows.filter(({p})=>!k||(p.name+' '+(p.recipient||'')).toLowerCase().includes(k)).map(({p,it})=>{ const ok=effStatus(it)==='delivered';
+        return `<div class="r" style="cursor:default"><span>${esc(p.name)}<br><small class="muted">${ok?howTxt(it)+(it.by&&!it.via?' · '+esc(it.by):'')+(it.receivedBy&&it.receivedBy!=='LINE'?' · รับโดย '+esc(it.receivedBy):''):'<span class="late" style="color:var(--red)">ยังไม่ได้ส่ง</span>'}</small></span><small class="muted" style="white-space:nowrap">${ok&&it.at?esc(thDate(it.at,true)):''}</small></div>`; }).join('')||'<div class="muted">ไม่พบ</div>'; };
+    q('#rdQ').oninput=draw; draw();
+    q('#rdRep').onclick=()=>{ close(); reportSheet(rid); };
+    q('#rdSign').onclick=()=>{ close(); printSheet(rid); };
+    q('#rdCsv').onclick=()=>exportCsv(rid);
+    q('#rdBack').onclick=()=>{ close(); historySheet(); };
+  });
+}
 function loadScript(src){ return new Promise((ok,no)=>{ if(document.querySelector(`script[src="${src}"]`)) return ok(); const sc=document.createElement('script'); sc.src=src; sc.onload=ok; sc.onerror=()=>no(new Error('โหลดตัวสร้าง PDF ไม่ได้ ตรวจสอบสัญญาณอินเทอร์เน็ต')); document.head.appendChild(sc); }); }
-function exportCsv(){
+function exportCsv(rid){ if(rid && rid!==S.roundId) return inRound(rid,()=>exportCsv()); 
   const st=ST_TEXT;
   const head=['ที่','ประเภท','สายส่ง','ชื่อ','ผู้รับ/ตำแหน่ง','สถานะ','ผู้บันทึก','ฝากส่งโดย','ผู้รับเอกสาร','เวลา','หมายเหตุ','ลิงก์รูป'];
   const st2=st; const lines=roundRows().map(({p,it},i)=>[i+1,p.category,p.route||'',p.name,p.recipient,(effStatus(it)==='delivered'?(it.via?'ฝากส่ง':METHOD_TXT[it.method]||'ส่งสำเร็จ'):st2[effStatus(it)]||it.status),it.by,it.via||'',it.receivedBy,it.at?thDate(it.at,true):'',it.note,
@@ -3059,7 +3095,7 @@ function exportCsv(){
 }
 
 /* ============ ตรวจหารุ่นใหม่ (สำหรับแอปบนหน้าจอโฮมที่ไม่มีปุ่มรีเฟรช) ============ */
-const BUILD_ID='20261012134218';
+const BUILD_ID='20261012135129';
 async function checkUpdate(){
   if(location.protocol==='file:' || BUILD_ID.startsWith('__')) return;
   try{ const v=(await (await fetch('version.txt?t='+Date.now(),{cache:'no-store'})).text()).trim();
