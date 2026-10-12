@@ -1621,10 +1621,12 @@ async function refresh(silent){
 const DEFAULT_MSG='เรียน {ผู้รับ}\n\nงานประเพณีฯ กองการศึกษา เทศบาลนครแหลมฉบัง ขอส่ง{เรื่อง} รายละเอียดตามไฟล์แนบ\n\nจึงเรียนมาเพื่อโปรดทราบ\nงานประเพณีฯ กองการศึกษา เทศบาลนครแหลมฉบัง';
 function fillMsg(r, p){ return String((r&&r.msg)||DEFAULT_MSG).replace(/\{ผู้รับ\}/g, p.recipient||p.name).replace(/\{ชื่อ\}/g, p.name).replace(/\{เรื่อง\}/g, (r&&r.title)||'หนังสือ'); }
 // scope = {cats,routes} เลือกประเภท/สายส่ง หรือ {all:true} ทุกจุด · ex = รายชื่อที่ไม่ส่งเรื่องนี้
+// ids = เลือกรายชื่อเอง (เฉพาะคนที่ติ๊ก รายชื่อใหม่ไม่ถูกเพิ่มเอง)
 function parseScope(r){ try{ const x=JSON.parse((r&&r.scope)||'null'); if(!x) return null; const all=!!x.all;
+    if(Array.isArray(x.ids)) return {list:true, ids:x.ids, all:false, cats:[], routes:[], ex:x.ex||[]};
     if(!all && !(x.cats||x.routes)) return null; return {all, cats:x.cats||[], routes:x.routes||[], ex:x.ex||[]}; }catch(e){ return null; } }
-function inScope(p, sc){ return !sc || (!(sc.ex||[]).includes(p.id) && (sc.all || sc.cats.includes(p.category) || (p.route && sc.routes.includes(p.route)))); }
-const scopeJson = sc => !sc || (sc.all && !(sc.ex||[]).length) ? '' : JSON.stringify(sc);
+function inScope(p, sc){ return !sc || (!(sc.ex||[]).includes(p.id) && (sc.list ? sc.ids.includes(p.id) : (sc.all || sc.cats.includes(p.category) || (p.route && sc.routes.includes(p.route))))); }
+const scopeJson = sc => !sc || (sc.all && !(sc.ex||[]).length) ? '' : JSON.stringify(sc.list?{ids:sc.ids,ex:sc.ex||[]}:{all:sc.all||undefined,cats:sc.cats,routes:sc.routes,ex:sc.ex});
 const curRound = () => roundById(S.roundId);
 async function ensureCurrent(){
   const cur=S.rounds.filter(r=>r.status!=='closed').pop();
@@ -1643,7 +1645,8 @@ async function ensureCurrent(){
 }
 // ชุดการส่ง: ตั้งชื่อเรื่อง เลือกว่าส่งใครบ้าง แนบไฟล์หนังสือ หรือเริ่มชุดใหม่
 async function setDialog(){
-  const r=curRound()||{}, sc0=parseScope(r), sc=sc0&&!sc0.all?sc0:null, ex=(sc0&&sc0.ex||[]).filter(id=>S.places.some(p=>p.id===id));
+  const r=curRound()||{}, sc0=parseScope(r), sc=sc0&&!sc0.all&&!sc0.list?sc0:null, ex=(sc0&&!sc0.list&&sc0.ex||[]).filter(id=>S.places.some(p=>p.id===id));
+  const past=S.rounds.filter(x=>x.id!==r.id && S.items.some(i=>i.roundId===x.id)).slice().reverse();
   const cats=S.categories.filter(c=>S.places.some(p=>p.category===c.name));
   const rts=S.routeList.filter(x=>S.places.some(p=>p.route===x.name));
   const c=countItems(roundItems());
@@ -1657,7 +1660,13 @@ async function setDialog(){
       <div class="f">ไฟล์หนังสือ (ใช้แนบตอนส่งทางอีเมล/LINE)
         <div class="docrow"><span id="sdDoc" class="muted">${doc?'📎 '+esc(doc.name)+' ('+fmtSize(doc.size)+')':'ยังไม่ได้แนบ'}</span>
         <label class="btn" style="flex:none">${doc?'เปลี่ยนไฟล์':'แนบไฟล์'}<input type="file" id="sdFile" accept="application/pdf,image/*,.doc,.docx" class="hide"></label></div></div>
-      <div class="seg" id="sdMode"><button data-m="all" class="${sc?'':'on'}">ส่งทุกจุด (${S.places.length})</button><button data-m="pick" class="${sc?'on':''}">เลือกประเภท/สายส่ง</button></div>
+      <div class="f" style="margin-bottom:-4px">ส่งให้ใครบ้าง</div>
+      <div class="seg" id="sdMode"><button data-m="all" class="${!sc&&!(sc0&&sc0.list)?'on':''}">ทุกคน (${S.places.length})</button><button data-m="pick" class="${sc?'on':''}">ตามประเภท</button><button data-m="list" class="${sc0&&sc0.list?'on':''}">เลือกรายชื่อเอง</button></div>
+      <div id="sdList" class="${sc0&&sc0.list?'':'hide'} stack">
+        ${past.length?`<label class="f">ใช้รายชื่อเดียวกับเรื่องเดิม<select id="sdCopy"><option value="">— เลือกเรื่องที่เคยส่ง —</option>${past.map(x=>`<option value="${esc(x.id)}">${esc(x.title||'(ไม่มีชื่อเรื่อง)')} · ${S.items.filter(i=>i.roundId===x.id).length} คน</option>`).join('')}</select></label>`:''}
+        <label class="f"><input id="sdQ" placeholder="🔍 ค้นชื่อ / ผู้รับ" autocomplete="off"></label>
+        <div id="sdLs" class="rmlist"></div>
+      </div>
       <div id="sdPick" class="${sc?'':'hide'}">
         <div class="fsec">ประเภท</div><div class="chips">${cats.map(x=>`<button class="chip ${sc&&sc.cats.includes(x.name)?'on':''}" data-c="${esc(x.name)}"><span class="sw" style="background:${esc(x.color)}"></span>${esc(x.name)} <span class="n">${S.places.filter(p=>p.category===x.name).length}</span></button>`).join('')}</div>
         ${rts.length?`<div class="fsec">สายส่ง</div><div class="chips">${rts.map(x=>`<button class="chip ${sc&&sc.routes.includes(x.name)?'on':''}" data-r="${esc(x.name)}">${esc(x.name)} <span class="n">${S.places.filter(p=>p.route===x.name).length}</span></button>`).join('')}</div>`:''}
@@ -1668,12 +1677,30 @@ async function setDialog(){
       <button class="btn warn" id="sdNew">เริ่มเรื่องใหม่ — ล้างสถานะทุกจุดกลับเป็นระหว่างส่ง</button>
       <div class="muted" style="font-size:12.5px">ใช้ "เริ่มเรื่องใหม่" เมื่อจะส่งเอกสารเรื่องใหม่ ข้อมูลเรื่องเดิมยังเก็บไว้ในระบบ แนะนำให้ส่งออก Excel เก็บไว้ก่อน</div>
     </div>`, (el,close)=>{
-    let mode=sc?'pick':'all', newFile=null, exK=ex.slice();
-    const pick=(fresh)=>{ const e=fresh?[]:exK; if(mode==='all') return {all:true,cats:[],routes:[],ex:e}; return {cats:[...el.querySelectorAll('[data-c].on')].map(b=>b.dataset.c), routes:[...el.querySelectorAll('[data-r].on')].map(b=>b.dataset.r), ex:e}; };
+    let mode=sc0&&sc0.list?'list':sc?'pick':'all', newFile=null, exK=ex.slice();
+    const sel=new Set(roundItems().map(i=>i.placeId));
+    const pick=(fresh)=>{ const e=fresh?[]:exK; if(mode==='list') return {list:true,ids:[...sel],cats:[],routes:[],ex:[]}; if(mode==='all') return {all:true,cats:[],routes:[],ex:e}; return {cats:[...el.querySelectorAll('[data-c].on')].map(b=>b.dataset.c), routes:[...el.querySelectorAll('[data-r].on')].map(b=>b.dataset.r), ex:e}; };
+    const order=new Map(S.categories.map((c,i)=>[c.name,i]));
+    const plist=S.places.slice().sort((a,b)=>(order.get(a.category)??99)-(order.get(b.category)??99));
+    const drawList=()=>{ const k=el.querySelector('#sdQ').value.trim().toLowerCase(); let html='';
+      [...new Set(plist.map(p=>p.category))].forEach(cat=>{ const ps=plist.filter(p=>p.category===cat), vis=ps.filter(p=>!k||(p.name+' '+p.recipient).toLowerCase().includes(k)); if(!vis.length) return;
+        const n=ps.filter(p=>sel.has(p.id)).length;
+        html+=`<label class="chk rmg" style="display:flex"><input type="checkbox" data-gc="${esc(cat)}" ${n===ps.length?'checked':''}><span>${esc(cat)} <small class="muted" data-gn="${esc(cat)}">(${n}/${ps.length})</small></span></label>`
+          +vis.map(p=>`<label class="chk"><input type="checkbox" data-pid="${esc(p.id)}" ${sel.has(p.id)?'checked':''}><span>${esc(p.name)}${p.recipient&&p.recipient!==p.name?`<br><small class="muted">${esc(p.recipient)}</small>`:''}</span></label>`).join(''); });
+      el.querySelector('#sdLs').innerHTML=html||'<div class="muted">ไม่พบ</div>'; updG(); };
+    const updG=()=>el.querySelectorAll('[data-gc]').forEach(c=>{ const ps=plist.filter(p=>p.category===c.dataset.gc), n=ps.filter(p=>sel.has(p.id)).length;
+      c.checked=n===ps.length; c.indeterminate=n>0&&n<ps.length; const g=[...el.querySelectorAll('[data-gn]')].find(x=>x.dataset.gn===c.dataset.gc); if(g) g.textContent=`(${n}/${ps.length})`; });
+    el.querySelector('#sdLs').onchange=e=>{ const t=e.target;
+      if(t.dataset.pid){ t.checked?sel.add(t.dataset.pid):sel.delete(t.dataset.pid); updG(); }
+      if(t.dataset.gc){ plist.filter(p=>p.category===t.dataset.gc).forEach(p=>t.checked?sel.add(p.id):sel.delete(p.id)); el.querySelectorAll('#sdLs [data-pid]').forEach(x=>x.checked=sel.has(x.dataset.pid)); updG(); }
+      sync(); };
+    el.querySelector('#sdQ').oninput=drawList;
+    const cp=el.querySelector('#sdCopy'); if(cp) cp.onchange=()=>{ if(!cp.value) return; sel.clear(); S.items.filter(i=>i.roundId===cp.value).forEach(i=>{ if(S.places.some(p=>p.id===i.placeId)) sel.add(i.placeId); }); drawList(); sync(); toast(`ใช้รายชื่อ ${sel.size} คนจากเรื่องเดิม`); };
+    drawList();
     const ec=el.querySelector('#sdExClr'); if(ec) ec.onclick=()=>{ exK=[]; el.querySelector('#sdEx').textContent='จะเอารายชื่อที่นำออกไว้กลับมาส่งด้วย — กดบันทึก'; sync(); };
     const want=(fresh)=>{ const x=pick(fresh); return S.places.filter(p=>inScope(p,x)).map(p=>p.id); };
     const sync=()=>{ el.querySelector('#sdN').textContent=`รวม ${want().length} จุด`; };
-    el.querySelectorAll('#sdMode button').forEach(b=>b.onclick=()=>{ mode=b.dataset.m; el.querySelectorAll('#sdMode button').forEach(x=>x.classList.toggle('on',x===b)); el.querySelector('#sdPick').classList.toggle('hide',mode==='all'); sync(); });
+    el.querySelectorAll('#sdMode button').forEach(b=>b.onclick=()=>{ mode=b.dataset.m; el.querySelectorAll('#sdMode button').forEach(x=>x.classList.toggle('on',x===b)); el.querySelector('#sdPick').classList.toggle('hide',mode!=='pick'); el.querySelector('#sdList').classList.toggle('hide',mode!=='list'); sync(); });
     el.querySelectorAll('[data-c],[data-r]').forEach(b=>b.onclick=()=>{ b.classList.toggle('on'); sync(); });
     el.querySelector('#sdMsgReset').onclick=()=>{ el.querySelector('#sdMsg').value=DEFAULT_MSG; };
     const msgVal=()=>{ const m=el.querySelector('#sdMsg').value.trim(); return m===DEFAULT_MSG?'':m; };
@@ -1818,7 +1845,7 @@ function renderProgress(){
   const box=$('progress');
   box.classList.remove('hide');
   const c=countItems(scopePlaces().map(p=>itemOf(p.id))), r=curRound()||{}, sc=parseScope(r);
-  const scTxt=sc?[...sc.cats,...sc.routes.map(x=>'สาย '+x)].join(', '):'';
+  const scTxt=sc?(sc.list?'รายชื่อที่เลือก':[...sc.cats,...sc.routes.map(x=>'สาย '+x)].join(', ')):'';
   $('progTxt').innerHTML = `${r.title?`<span class="ttl">${esc(r.title)}</span> · `:'<span class="ttl" style="color:var(--blue)">+ ตั้งชื่อเรื่อง</span> · '}${scTxt?`<span class="scope">เฉพาะ ${esc(scTxt)}</span> `:''}ส่งสำเร็จ ${c.delivered}/${c.total} <span style="color:var(--ink-2);font-weight:400">· ค้าง ${c.pending}</span>`;
   $('meter').innerHTML = barHtml(c);
 }
@@ -2744,6 +2771,7 @@ async function setExcluded(ids, on){
   const r=curRound(); if(!r) return;
   const sc=parseScope(r)||{all:true,cats:[],routes:[],ex:[]};
   const ex=new Set(sc.ex||[]); ids.forEach(id=>on?ex.add(id):ex.delete(id)); sc.ex=[...ex];
+  if(sc.list){ const L=new Set(sc.ids); ids.forEach(id=>on?L.delete(id):L.add(id)); sc.ids=[...L]; sc.ex=[]; }
   const js=scopeJson(sc); if(js===(r.scope||'')) return;
   await api('updateRound',{roundId:r.id, scope:js}); r.scope=js;
 }
@@ -3031,7 +3059,7 @@ function exportCsv(){
 }
 
 /* ============ ตรวจหารุ่นใหม่ (สำหรับแอปบนหน้าจอโฮมที่ไม่มีปุ่มรีเฟรช) ============ */
-const BUILD_ID='20261012132834';
+const BUILD_ID='20261012134218';
 async function checkUpdate(){
   if(location.protocol==='file:' || BUILD_ID.startsWith('__')) return;
   try{ const v=(await (await fetch('version.txt?t='+Date.now(),{cache:'no-store'})).text()).trim();
